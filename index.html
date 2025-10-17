@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hello Space — Tiny Single-file Page</title>
+  <!-- Tailwind CSS CDN -->
+  <script>
+    // Tailwind configuration before loading the CDN to extend theme
+    window.tailwind = {
+      config: {
+        theme: {
+          extend: {
+            colors: {
+              cosmic: '#0f172a',
+              nebula1: '#7c3aed',
+              nebula2: '#06b6d4'
+            },
+            fontFamily: {
+              sans: ['Inter', 'ui-sans-serif', 'system-ui']
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Small custom styles for effects not provided by Tailwind utilities */
+    html,body,#app {
+      height: 100%;
+    }
+    body {
+      margin: 0;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      background: radial-gradient(ellipse at 20% 10%, rgba(124,58,237,0.08), transparent 10%), radial-gradient(ellipse at 90% 80%, rgba(6,182,212,0.07), transparent 10%), #020617;
+      color: white;
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+    }
+    /* Soft glow for the heading */
+    .glow {
+      text-shadow: 0 2px 8px rgba(124,58,237,0.45), 0 8px 30px rgba(6,182,212,0.06);
+    }
+    /* Subtle glass panel backdrop blur */
+    .glass {
+      background: linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.02));
+      backdrop-filter: blur(6px) saturate(120%);
+      -webkit-backdrop-filter: blur(6px) saturate(120%);
+      border: 1px solid rgba(255,255,255,0.04);
+    }
+    /* Canvas sits behind main content */
+    #starfield {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      display: block;
+    }
+    /* Accessibility: keep live region visually hidden */
+    .sr-live {
+      position: absolute;
+      left: -9999px;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+    }
+  </style>
+</head>
+<body>
+  <div id="app" class="relative min-h-screen flex items-center justify-center overflow-hidden">
+    <!-- Animated starfield canvas behind content -->
+    <canvas id="starfield" aria-hidden="true"></canvas>
+
+    <!-- Main content card -->
+    <main class="relative z-10 w-full max-w-3xl px-6 py-12 sm:py-20 sm:px-8 lg:px-12">
+      <section class="glass rounded-2xl p-8 sm:p-12 shadow-xl shadow-black/40">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+          <div class="flex-1">
+            <h1 class="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight leading-tight glow">Hello Space</h1>
+            <p class="mt-3 text-slate-200/80 max-w-prose text-sm sm:text-base">A tiny, single-file, responsive web page — crafted with Tailwind CSS. Subtle animated stars in the background for a playful cosmic touch.</p>
+            <div class="mt-6 flex flex-wrap gap-3">
+              <button id="copyBtn" class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-nebula1 to-nebula2 text-sm font-medium shadow-md hover:brightness-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-nebula1" aria-pressed="false">
+                Copy "Hello Space"
+              </button>
+              <button id="warpBtn" class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-transparent border border-white/10 text-sm hover:bg-white/3 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-nebula2" aria-pressed="false">
+                Warp Mode
+              </button>
+              <a href="#" id="aboutToggle" class="ml-auto text-sm text-slate-200/80 hover:underline hidden md:inline">About</a>
+            </div>
+          </div>
+
+          <div class="mt-6 md:mt-0 w-full md:w-80 text-slate-200/80">
+            <div class="rounded-xl p-4 bg-black/30 border border-white/5">
+              <p class="text-xs">Tip</p>
+              <p class="mt-2 text-sm">Click <strong>Warp Mode</strong> to speed up the stars. Click <strong>Copy</strong> to copy the phrase to your clipboard.</p>
+            </div>
+          </div>
+        </div>
+
+        <div id="aboutPanel" class="mt-8 text-sm text-slate-200/70 hidden">
+          <hr class="border-white/5 mb-4">
+          <p>This is a minimal single-file example showcasing Tailwind CDN usage, a responsive layout, accessible controls, and an animated canvas starfield. Everything runs client-side — no build step required.</p>
+        </div>
+      </section>
+
+      <p class="mt-6 text-xs text-slate-300/50 text-center">Built with ♥ — open this file in your browser (index.html)</p>
+    </main>
+
+    <div id="ariaLive" class="sr-live" aria-live="polite" aria-atomic="true"></div>
+  </div>
+
+  <script>
+    // Inline JavaScript: starfield, interactions
+    (function () {
+      // Utilities
+      const $ = sel => document.querySelector(sel);
+      const copyBtn = $('#copyBtn');
+      const warpBtn = $('#warpBtn');
+      const aboutToggle = $('#aboutToggle');
+      const aboutPanel = $('#aboutPanel');
+      const ariaLive = $('#ariaLive');
+
+      // Canvas setup
+      const canvas = document.getElementById('starfield');
+      const ctx = canvas.getContext('2d');
+      let DPR = Math.max(1, window.devicePixelRatio || 1);
+      let width = 0, height = 0;
+
+      function resize() {
+        DPR = Math.max(1, window.devicePixelRatio || 1);
+        width = window.innerWidth;
+        height = window.innerHeight;
+        canvas.width = Math.floor(width * DPR);
+        canvas.height = Math.floor(height * DPR);
+        canvas.style.width = width + 'px';
+        canvas.style.height = height + 'px';
+        ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+        initStars();
+      }
+
+      window.addEventListener('resize', debounce(resize, 150));
+
+      // Debounce helper
+      function debounce(fn, ms) {
+        let t;
+        return (...args) => {
+          clearTimeout(t);
+          t = setTimeout(() => fn(...args), ms);
+        };
+      }
+
+      // Starfield
+      let stars = [];
+      let mouse = { x: width / 2, y: height / 2 };
+      let warp = false;
+
+      function initStars() {
+        const area = width * height;
+        // star count scales with viewport; keep it small on mobile
+        const base = Math.min(220, Math.max(60, Math.floor(area / 7000)));
+        stars = [];
+        for (let i = 0; i < base; i++) {
+          stars.push(createStar());
+        }
+      }
+
+      function rand(min, max) { return Math.random() * (max - min) + min; }
+
+      function createStar() {
+        const r = Math.random();
+        const size = Math.max(0.3, Math.pow(r, 1.8) * 2.2);
+        return {
+          x: Math.random() * width,
+          y: Math.random() * height,
+          baseX: 0, // filled on first draw
+          baseY: 0,
+          size: size,
+          alpha: rand(0.2, 0.95),
+          twinkle: rand(0.003, 0.02),
+          dx: (rand(-0.02, 0.02)),
+          dy: rand(0.02, 0.3),
+          hue: rand(180, 300) // slight color variation
+        };
+      }
+
+      // Mouse parallax
+      window.addEventListener('mousemove', (e) => {
+        mouse.x = e.clientX;
+        mouse.y = e.clientY;
+      });
+
+      // Animation loop
+      let last = performance.now();
+
+      function animate(now) {
+        const dt = (now - last) / 1000; // seconds
+        last = now;
+
+        // Fade canvas slightly for motion trail effect
+        ctx.fillStyle = warp ? 'rgba(0,0,2,0.18)' : 'rgba(0,0,2,0.25)';
+        ctx.fillRect(0, 0, width, height);
+
+        // center for slight parallax
+        const cx = width / 2;
+        const cy = height / 2;
+        const px = (mouse.x - cx) / cx;
+        const py = (mouse.y - cy) / cy;
+
+        for (let s of stars) {
+          // store base pos
+          if (!s.baseX) { s.baseX = s.x; s.baseY = s.y; }
+
+          // twinkle
+          s.alpha += Math.sin(now * s.twinkle * 100) * 0.005;
+          s.alpha = Math.max(0.12, Math.min(1, s.alpha));
+
+          // movement
+          const speedMultiplier = warp ? 3.6 : 1;
+          s.x += s.dx * (1 + s.size) * 20 * dt * speedMultiplier;
+          s.y += s.dy * (1 + s.size) * 18 * dt * speedMultiplier;
+
+          // wrap
+          if (s.x > width + 10) s.x = -10;
+          if (s.x < -10) s.x = width + 10;
+          if (s.y > height + 10) s.y = -10;
+          if (s.y < -10) s.y = height + 10;
+
+          // draw
+          ctx.beginPath();
+          const offsetX = px * (s.size * 8);
+          const offsetY = py * (s.size * 8);
+          const drawX = s.x + offsetX;
+          const drawY = s.y + offsetY;
+
+          const gradient = ctx.createRadialGradient(drawX, drawY, 0, drawX, drawY, Math.max(1, s.size * 4));
+          // subtle color mix between nebula colors
+          gradient.addColorStop(0, `hsla(${s.hue}, 80%, 88%, ${s.alpha})`);
+          gradient.addColorStop(0.6, `hsla(${(s.hue + 80) % 360}, 70%, 60%, ${s.alpha * 0.4})`);
+          gradient.addColorStop(1, `rgba(255,255,255,0)`);
+
+          ctx.fillStyle = gradient;
+          ctx.arc(drawX, drawY, Math.max(0.4, s.size * 1.6), 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        requestAnimationFrame(animate);
+      }
+
+      // Buttons and interactions
+      copyBtn.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText('Hello Space');
+          copyBtn.textContent = 'Copied!';
+          copyBtn.setAttribute('aria-pressed', 'true');
+          announce('Copied "Hello Space" to clipboard.');
+          setTimeout(() => { copyBtn.textContent = 'Copy "Hello Space"'; copyBtn.setAttribute('aria-pressed', 'false'); }, 1500);
+        } catch (err) {
+          announce('Unable to copy to clipboard.');
+        }
+      });
+
+      warpBtn.addEventListener('click', () => {
+        warp = !warp;
+        warpBtn.setAttribute('aria-pressed', String(warp));
+        warpBtn.textContent = warp ? 'Warp Mode: ON' : 'Warp Mode';
+        announce(warp ? 'Warp mode enabled.' : 'Warp mode disabled.');
+      });
+
+      aboutToggle.addEventListener('click', (e) => {
+        e.preventDefault();
+        const visible = aboutPanel.classList.toggle('hidden');
+        // If hidden toggled returns true -> hidden removed? We use toggle then check
+        const isVisible = !aboutPanel.classList.contains('hidden');
+        announce(isVisible ? 'About panel opened.' : 'About panel closed.');
+      });
+
+      function announce(msg) {
+        ariaLive.textContent = '';
+        setTimeout(() => { ariaLive.textContent = msg; }, 50);
+      }
+
+      // Initial setup
+      resize();
+      initStars();
+      last = performance.now();
+      requestAnimationFrame(animate);
+
+      // Small optimization: pause animation when not visible
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) {
+          last = performance.now();
+        }
+      });
+
+      // Touch: slightly reduce star count to conserve CPU
+      if ('ontouchstart' in window) {
+        // already scaled by resize, but we can further reduce density on small screens
+        stars = stars.slice(0, Math.max(40, Math.floor(stars.length * 0.7)));
+      }
+
+      // Make sure keyboard users can toggle Warp with Enter/Space
+      warpBtn.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          warpBtn.click();
+        }
+      });
+
+      copyBtn.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          copyBtn.click();
+        }
+      });
+
+    })();
+  </script>
+</body>
+</html>
